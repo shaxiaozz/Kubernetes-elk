@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-cm
+  namespace: app
+data:
+  nginx.conf: |
+    # 设置logstash的输入源从kafka的topic中获取
+    input {
+      kafka {
+        bootstrap_servers => "kafka-0.kafka-svc:9092"
+        topics => "nginx_access_logs"
+        codec => "json"
+        consumer_threads => 5
+        decorate_events => true
+      }
+    }
+    # 根据字段值判断是否需要做处理
+    filter {
+       if [fields][log_topics] == "nginx_access_logs" {
+          geoip {
+            source => "clientip"
+            target => "geoip"
+            database => "/usr/share/logstash/vendor/bundle/jruby/2.5.0/gems/logstash-filter-geoip-7.2.2-java/vendor/GeoLite2-City.mmdb"
+            add_field => [ "[geoip][coordinates]", "%{[geoip][longitude]}" ]
+            add_field => [ "[geoip][coordinates]", "%{[geoip][latitude]}"  ]
+          }
+       if "_geoip_lookup_failure" in [tags] { drop { } }
+       mutate {
+         convert => ["[geoip][coordinates]", "float"]
+         remove_field => "timestamp"
+       }
+       }
+    }
+    # 输出到ES进行存储
+    output {
+      if [fields][log_topics] == "nginx_access_logs" {
+        elasticsearch {
+            hosts => ["elasticsearch-0.elasticsearch-svc:9200"]
+            index => "nginx_accesslog-%{+YYYY.MM.dd}"
+        }
+      }
+    }
+
+  logstash.yml: |
+    http.host: "0.0.0.0" 
+    xpack.monitoring.elasticsearch.hosts: "http://elasticsearch-0.elasticsearch-svc:9200"

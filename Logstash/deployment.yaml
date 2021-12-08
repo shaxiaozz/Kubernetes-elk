@@ -1,0 +1,77 @@
+apiVersion: apps/v1 
+kind: Deployment 
+metadata: 
+  name: logstash 
+  namespace: app
+spec: 
+  selector: 
+    matchLabels: 
+      name: logstash
+  template: 
+    metadata: 
+      labels: 
+        name: logstash 
+        app: elk 
+    spec: 
+      # 调度策略，匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      # 容器配置
+      containers: 
+      - image: logstash:7.14.2
+        name: logstash
+      # 容器端口配置
+        ports: 
+        - containerPort: 5044 
+          name: beats 
+      # 自定义容器启动命令
+        command: ["logstash"]
+        args: ["-f","/usr/share/logstash/config/nginx.conf"]
+      # 设置容器环境变量
+        env:
+        - name: "XPACK_MONITORING_ELASTICSEARCH_HOSTS"
+          value: "http://elasticsearch-0.elasticsearch-svc:9200"
+      # 容器资源限制
+        resources:
+          limits: 
+            cpu: 500m 
+            memory: 1024Mi 
+          requests: 
+            cpu: 300m 
+            memory: 512Mi
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 5044
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 5044
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts: 
+        - name: logstash-conf 
+          mountPath: /usr/share/logstash/config/nginx.conf
+          subPath: nginx.conf
+        - name: logstash-conf
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+      # configmap资源对象挂载   
+      volumes: 
+      - name: logstash-conf
+        configMap: 
+          name: logstash-cm
+          items:
+          - key: nginx.conf
+            path: nginx.conf
+          - key: logstash.yml
+            path: logstash.yml
