@@ -12,6 +12,8 @@
 ## 背景
 这是一个基于Kubernetes v1.22.2集群部署ELK日志分析系统。并收集与展示Nginx access访问日志的项目。主要创建的原因是由于在测试环境部署的，因此对这个项目用到的K8s相关资源对象yaml文件进行一个存档
 
+请根据目录的顺序来部署各个服务。由于我的测试环境资源有限，每个服务都只是运行了一个副本(Pod)。因此，如果你想针对ES，Zookeeper，Kafka服务做集群的话，也是可以的，只需要修改控制器的副本数与对于服务的configmap配置文件即可。
+
 ## 部署elasticsearch
 ```
 [root@k8s-master ~]# git clone https://github.com/shaxiaozz/Kubernetes-elk.git
