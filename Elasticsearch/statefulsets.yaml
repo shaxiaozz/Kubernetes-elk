@@ -74,7 +74,7 @@ spec:
       # 就绪检测
         readinessProbe:
           tcpSocket:
-            port: 2181
+            port: 9200
           initialDelaySeconds: 60
           periodSeconds: 10
           timeoutSeconds: 5
