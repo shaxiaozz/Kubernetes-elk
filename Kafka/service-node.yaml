@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-svc-node
+  namespace: app
+  labels:
+    name: kafka
+    app: elk
+spec:
+  type: ClusterIP
+  ports:
+  - name: kafka
+    port: 9092
+    targetPort: kafka
+  selector:
+    name: kafka
