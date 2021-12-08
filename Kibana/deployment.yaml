@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: app
+  labels:
+    name: kibana
+    app: elk
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: kibana
+  # 设置滚动更新策略
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        name: kibana
+    spec:
+      # 调度策略，匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      # 容器配置
+      containers:
+      - name: kibana
+        image: kibana:7.14.2
+        imagePullPolicy: IfNotPresent
+      # 设置容器端口
+        ports:
+        - containerPort: 5601
+          protocol: TCP
+          name: http
+      # 容器资源限制
+        resources:
+          limits:
+            memory: 800Mi
+            cpu: 200m
+          requests:
+            memory: 512Mi
+            cpu: 100m
+      # 设置容器环境变量
+        env:
+        - name: ELASTICSEARCH_HOSTS
+          value: "http://elasticsearch-svc:9200"
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 5601
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 5601
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts:
+        - name: kibana-config
+          mountPath: /usr/share/kibana/config/kibana.yml
+          subPath: kibana.yml
+      # configmap资源对象挂载
+      volumes:
+      - name: kibana-config
+        configMap:
+          name: kibana-cm
