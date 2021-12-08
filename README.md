@@ -2,4 +2,5 @@
 
 
 **Kibana可视化展示**
+![nginx](https://user-images.githubusercontent.com/43721571/145190939-f4b758df-2706-4b16-9beb-25d49fce4205.png)
 
