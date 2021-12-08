@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: app
+  labels:
+    name: zookeeper
+    app: elk
+spec:
+  # 设置service的名称
+  serviceName: zookeeper-svc
+  replicas: 1
+  podManagementPolicy: Parallel
+  # 更新策略为滚动更新
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      name: zookeeper
+  template:
+    metadata:
+      name: zookeeper
+      labels:
+        name: zookeeper
+        app: elk
+    spec:
+      # 调度策略,匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      # 容器配置
+      containers:
+      - name: zookeeper
+        image: zookeeper:3.7.0
+        imagePullPolicy: IfNotPresent
+      # 设置容器端口
+        ports:
+        - name: client
+          containerPort: 2181
+        - name: follower
+          containerPort: 2888
+        - name: election
+          containerPort: 3888
+      # 资源限制
+        resources: 
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 250m
+            memory: 256Mi
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 2181
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 2181
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts:
+        - name: zookeeper-config
+          mountPath: /conf/zoo.cfg
+          subPath: zoo.cfg
+        - name: zookeeper-data
+          mountPath: /data
+      # configmap挂载
+      volumes:
+      - name: zookeeper-config
+        configMap:
+          name: zookeeper-cm
+  # storagclass定义，自动创建pv与pvc并绑定
+  volumeClaimTemplates:
+    - metadata:
+        name: zookeeper-data
+      spec:
+        storageClassName: nfs-storage
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
