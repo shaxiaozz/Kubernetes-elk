@@ -14,6 +14,10 @@
 
 请根据目录的顺序来部署各个服务。由于我的测试环境资源有限，每个服务都只是运行了一个副本(Pod)。因此，如果你想针对ES，Zookeeper，Kafka服务做集群的话，也是可以的，只需要修改控制器的副本数与对于服务的configmap配置文件即可。
 
+以下是架构图：
+![Kubernetes-elk架构 (1)](https://user-images.githubusercontent.com/43721571/145380271-4dd00308-4ce0-458a-96e8-9bd480575523.png)
+
+
 ## 部署elasticsearch
 ```
 [root@k8s-master ~]# git clone https://github.com/shaxiaozz/Kubernetes-elk.git
