@@ -14,9 +14,18 @@
 
 请根据目录的顺序来部署各个服务。由于我的测试环境资源有限，每个服务都只是运行了一个副本(Pod)。因此，如果你想针对ES，Zookeeper，Kafka服务做集群的话，也是可以的，只需要修改控制器的副本数与对于服务的configmap配置文件即可。
 
-以下是架构图：
+**以下是架构图**
 ![Kubernetes-elk架构 (1)](https://user-images.githubusercontent.com/43721571/145380271-4dd00308-4ce0-458a-96e8-9bd480575523.png)
 
+1、Filebeat组件为日志采集客户端：通过定义服务器的日志文件路径，把日志一行一行的传输给到Kafka集群。因此在Filebeat配置文件中，input输入即是服务器日志文件的路径，output输出即是kafka连接的地址与设置kafka的topic。
+
+2、对于Kafka集群来说，Filebeat输出的日志到它哪里就作为生产者了，而Logstash就会把Filebeat生产到的信息给消息了，因此对于Kafka来说，Logstash就是消费组了，而logstash的消费组就叫logstash。
+
+3、Logstash消费Kafka消息时，通过判断对于的topic名称来决定是否需要进行日志的切割与过滤。在完成日志的切割与过滤后，将把日志流输出到ES上，进行存储。因此对于Logstash来说，input输入就是Kafka topic里面的消息，output输出就是ES的索引。
+
+4、当Logstash输出日志到达ES后，ES还根据配置来对日志进行存储，存储的索引是什么，分片是多少，副本数是多少等等。至此，日志的收集，过滤，存储已经完成了。
+
+5、当用户需要查看日志时，首先通过外网域名(kibana.qiufeng5.cn)访问，流量到达Nginx网关后，Nginx网关通过代理规则，将流量转发到了后端的Kibana实例上，Kibana再去连接ES集群，然后再返回结果给到用户。
 
 ## 部署elasticsearch
 ```
