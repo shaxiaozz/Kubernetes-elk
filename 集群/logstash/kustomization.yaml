@@ -1,0 +1,5 @@
+resources:
+  - logstash-cm.yaml
+  - logstash-conf.yaml
+  - service.yaml
+  - deploy.yaml

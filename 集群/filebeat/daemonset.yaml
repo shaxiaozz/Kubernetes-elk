@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: monitoring
+  labels:
+    name: filebeat
+    app: elk
+spec:
+  selector:
+    matchLabels:
+      name: filebeat
+  template:
+    metadata:
+      labels:
+        name: filebeat
+        app: elk
+    spec:
+      # 容器配置
+      containers:
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:7.4.2
+        imagePullPolicy: IfNotPresent
+      # 容器路径挂载
+        volumeMounts:
+        - name: app-logs
+          mountPath: /usr/share/filebeat/showmetest-ingresslogs
+        - name: filebeat-config
+          mountPath: /usr/share/filebeat/filebeat.yml
+          subPath: filebeat.yml
+        - name: timezone-volume
+          mountPath: /etc/localtime
+      # configmap资源对象挂载
+      volumes:
+      - name: filebeat-config
+        configMap:
+          name: filebeat-cm
+      - name: app-logs
+        hostPath:
+          path: /var/lib/docker/showmetest-ingresslogs
+      - name: timezone-volume
+        hostPath:
+          path: /etc/localtime

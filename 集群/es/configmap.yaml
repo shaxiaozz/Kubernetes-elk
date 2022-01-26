@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-cm
+  namespace: monitoring
+  labels:
+    name: elasticsearch
+    app: elk
+data:
+  elasticsearch.yml: |
+    cluster.name: eleelk
+    node.name: "${POD_NAME}.elasticsearch-svc"
+    network.host: 0.0.0.0
+    http.port: 9200
+    transport.tcp.port: 9300
+    node.master: true
+    node.data: true
+    discovery.zen.ping_timeout: 180s
+    cluster.initial_master_nodes: ["elasticsearch-0-0.elasticsearch-svc","elasticsearch-1-0.elasticsearch-svc","elasticsearch-2-0.elasticsearch-svc"]
+    bootstrap.system_call_filter: false
+    discovery.seed_hosts: ["elasticsearch-0-0.elasticsearch-svc","elasticsearch-1-0.elasticsearch-svc","elasticsearch-2-0.elasticsearch-svc"]
+    discovery.zen.minimum_master_nodes: 2
+    cluster.max_shards_per_node: 1000000
+    indices.queries.cache.count: 20000
+    xpack.security.enabled: true
+    xpack.security.transport.ssl.enabled: true
+    xpack.security.transport.ssl.verification_mode: certificate
+    xpack.security.transport.ssl.keystore.path: elastic-certificates.p12
+    xpack.security.transport.ssl.truststore.path: elastic-certificates.p12

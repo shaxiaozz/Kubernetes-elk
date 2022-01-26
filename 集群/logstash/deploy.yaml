@@ -1,0 +1,81 @@
+apiVersion: apps/v1 
+kind: Deployment 
+metadata: 
+  name: logstash 
+  namespace: monitoring
+  labels:
+    name: logstash
+    app: elk
+spec: 
+  selector: 
+    matchLabels: 
+      name: logstash
+  template: 
+    metadata: 
+      labels: 
+        name: logstash 
+        app: elk 
+    spec: 
+      # 调度策略，匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      # 容器配置
+      containers: 
+      - image: logstash:7.4.2
+        name: logstash
+      # 容器端口配置
+        ports: 
+        - containerPort: 5044 
+          name: beats
+        - containerPort: 9600
+          name: api
+      # 自定义容器启动命令
+        command: ["logstash"]
+        args: ["-f","/usr/share/logstash/conf.d/","--config.reload.automatic"]
+      # 容器资源限制
+        resources:
+          limits: 
+            memory: 3000Mi 
+          requests: 
+            memory: 1024Mi
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 9600
+          initialDelaySeconds: 90
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 9600
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts: 
+        - name: logstash-conf 
+          mountPath: /usr/share/logstash/conf.d
+        - name: logstash-cm
+          mountPath: /usr/share/logstash/config/logstash.yml
+          subPath: logstash.yml
+        - name: timezone-volume
+          mountPath: /etc/localtime
+      # configmap资源对象挂载   
+      volumes: 
+      - name: logstash-cm
+        configMap: 
+          name: logstash-cm
+          items:
+          - key: logstash.yml
+            path: logstash.yml
+      - name: logstash-conf
+        configMap:
+          name: logstash-conf
+      - name: timezone-volume
+        hostPath:
+          path: /etc/localtime

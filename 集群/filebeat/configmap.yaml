@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-cm
+  namespace: monitoring
+  labels:
+    name: filebeat
+    app: elk
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: log
+      enabled: true
+      paths:
+        - /usr/share/filebeat/showmetest-ingresslogs/access.log
+      json.keys_under_root: true
+      json.overwrite_keys: true
+      scan_frequency: 3s
+      fields:
+        log_topics: nginx_access_logs
+        log_env: ingress_nginx
+    output.kafka:
+      enabled: true
+      hosts: ["kafka-0-0.kafka-svc:9092","kafka-1-0.kafka-svc:9092","kafka-2-0.kafka-svc:9092"]
+      topic: '%{[fields][log_topics]}'
+      compression: gzip

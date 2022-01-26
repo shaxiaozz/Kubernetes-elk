@@ -1,0 +1,116 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch-1
+  namespace: monitoring
+  labels:
+    name: elasticsearch
+    app: elk
+spec:
+  replicas: 1
+  # 设置service的名称
+  serviceName: elasticsearch-svc
+  selector:
+    matchLabels:
+      name: elasticsearch
+  template:
+    metadata:
+      labels:
+        name: elasticsearch
+        app: elk
+    spec:
+      # 调度策略，匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      #初始化容器。修改数据目录权限
+      initContainers:
+      - name: chown-data
+        image: busybox
+        command: [chown, -R, "1000:0", /usr/share/elasticsearch/data]
+        volumeMounts:
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
+      # 初始化容器，修改系统参数
+      - name: increase-vm-max-map
+        image:  busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sysctl", "-w", "vm.max_map_count=262144"]
+        securityContext:
+          privileged: true
+      - name: increase-fd-ulimit
+        imagePullPolicy: IfNotPresent
+        image:  busybox
+        command: ["sh", "-c", "ulimit -n 65536"]
+        securityContext:
+          privileged: true
+      # elasticsearch容器配置
+      containers:
+      - name: elasticsearch
+        imagePullPolicy: IfNotPresent
+        image: elasticsearch:7.4.2
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ES_JAVA_OPTS
+          value: "-Xms1500m -Xmx1500m"
+      # 设置容器端口
+        ports:
+        - name: api
+          containerPort: 9200
+        - name: inter-node
+          containerPort: 9300
+      # 资源限制
+        resources:
+          limits:
+            memory: 2000Mi
+          requests:
+            memory: 2000Mi
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 9200
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 9200
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts:
+        - name: es-config
+          mountPath: /usr/share/elasticsearch/config/elasticsearch.yml
+          subPath: elasticsearch.yml
+        - name: es-keystore
+          mountPath: /usr/share/elasticsearch/config/elastic-certificates.p12
+          name: es-keystore
+          readOnly: true
+          subPath: elastic-certificates.p12
+        - name: es-data
+          mountPath: /usr/share/elasticsearch/data
+        - name: timezone-volume
+          mountPath: /etc/localtime
+      # configmap资源挂载
+      volumes:
+      - name: es-config
+        configMap:
+          name: elasticsearch-cm
+      - name: es-keystore
+        secret:
+          secretName: es-keystore
+          defaultMode: 0444
+      - name: es-data
+        hostPath:
+          path: /data/es/elasticsearch-1
+      - name: timezone-volume
+        hostPath:
+          path: /etc/localtime

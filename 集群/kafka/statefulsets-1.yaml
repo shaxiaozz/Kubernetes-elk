@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka-1
+  namespace: monitoring
+  labels:
+    app: elk
+    name: kafka
+spec:
+  selector:
+    matchLabels:
+      name: kafka
+  # 设置service的名称
+  serviceName: kafka-svc
+  podManagementPolicy: Parallel
+  replicas: 1
+  # 设置更新策略为滚动更新
+  updateStrategy:
+    type: "RollingUpdate"
+  template:
+    metadata:
+      name: "kafka"
+      labels:
+        name: kafka
+        app: elk
+    spec:
+      # 设置Pod安全上下文
+      securityContext:
+        fsGroup: 1001
+        runAsUser: 1001
+      # 调度策略，匹配存在app=elk标签的nodes
+      nodeSelector:
+        app: elk
+      # 容器配置
+      containers:
+      - name: kafka
+        image: bitnami/kafka:3.0.0-debian-10-r46
+        imagePullPolicy: IfNotPresent
+      # 容器资源限制
+        resources:
+          limits:
+            memory: 3000Mi
+          requests:
+            memory: 1024Mi
+      # 设置环境变量
+        env:
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: KAFKA_CFG_ZOOKEEPER_CONNECT
+          value: "zookeeper-svc"
+        - name: KAFKA_PORT_NUMBER
+          value: "9092"
+        - name: KAFKA_CFG_LISTENERS
+          value: "PLAINTEXT://0.0.0.0:$(KAFKA_PORT_NUMBER)"
+        - name: KAFKA_CFG_ADVERTISED_LISTENERS
+          value: 'PLAINTEXT://$(MY_POD_NAME).kafka-svc:$(KAFKA_PORT_NUMBER)'
+        - name: ALLOW_PLAINTEXT_LISTENER
+          value: "yes"
+        - name: KAFKA_HEAP_OPTS
+          value: "-Xmx2500m -Xms2500m"
+        - name: KAFKA_CFG_LOGS_DIRS
+          value: /opt/bitnami/kafka/data
+        - name: JMX_PORT
+          value: "9988"
+      # 设置容器端口
+        ports:
+        - name: kafka
+          containerPort: 9092
+      # 健康检测
+        livenessProbe:
+          tcpSocket:
+            port: 9092
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 2
+      # 就绪检测
+        readinessProbe:
+          tcpSocket:
+            port: 9092
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 6
+      # 容器路径挂载
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /bitnami/kafka
+        - name: timezone-volume
+          mountPath: /etc/localtime
+      volumes:
+      - name: kafka-data
+        hostPath:
+          path: /data/kafka/kafka-1
+      - name: timezone-volume
+        hostPath:
+          path: /etc/localtime

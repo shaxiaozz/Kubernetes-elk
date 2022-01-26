@@ -1,0 +1,9 @@
+resources:
+  - configmap.yaml
+  #- myid-0.yaml
+  #- myid-1.yaml
+  #- myid-2.yaml
+  - service.yaml
+  - statefulsets-0.yaml
+  - statefulsets-1.yaml
+  - statefulsets-2.yaml

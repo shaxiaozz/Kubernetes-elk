@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-cm
+  namespace: monitoring
+  labels:
+    name: logstash
+    app: elk
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0" 
+    xpack.monitoring.elasticsearch.hosts: ["http://elasticsearch-0-0.elasticsearch-svc:9200","http://elasticsearch-1-0.elasticsearch-svc:9200","http://elasticsearch-2-0.elasticsearch-svc:9200"]
+    xpack.monitoring.elasticsearch.username: logstash_system
+    xpack.monitoring.elasticsearch.password: F9UBLcvIr84oy22iiq3h
